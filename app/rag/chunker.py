@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List
+from typing import Dict, List, Optional
 
 
 @dataclass
@@ -8,6 +8,9 @@ class TextChunk:
     content: str
     start_char: int
     end_char: int
+    chunk_type: str = "text"
+    section_title: Optional[str] = None
+    metadata: Optional[Dict[str, str]] = None
 
 
 def _find_breakpoint(text: str, start: int, hard_end: int, min_end: int) -> int:
@@ -68,4 +71,3 @@ def chunk_text(text: str, chunk_size: int = 900, overlap: int = 150) -> List[Tex
         start = next_start
 
     return chunks
-

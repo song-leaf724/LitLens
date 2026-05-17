@@ -9,7 +9,7 @@ from app.services.document_service import document_service
 router = APIRouter()
 
 
-def _document_response(document) -> DocumentResponse:
+def document_to_response(document) -> DocumentResponse:
     return DocumentResponse(
         id=document.id,
         filename=document.filename,
@@ -18,6 +18,16 @@ def _document_response(document) -> DocumentResponse:
         chunk_count=document.chunk_count,
         error_message=document.error_message,
         created_at=document.created_at.isoformat(),
+        title=document.title,
+        author=document.author,
+        source_name=document.source_name,
+        source_id=document.source_id,
+        source_url=document.source_url,
+        license=document.license,
+        document_type=document.document_type,
+        type_confidence=document.type_confidence,
+        type_reason=document.type_reason,
+        chunk_strategy=document.chunk_strategy,
     )
 
 
@@ -36,13 +46,12 @@ async def upload_document(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    return _document_response(document)
+    return document_to_response(document)
 
 
 @router.get("", response_model=DocumentListResponse)
 def list_documents(db: Session = Depends(get_db)) -> DocumentListResponse:
     documents = document_service.list_documents(db)
     return DocumentListResponse(
-        documents=[_document_response(document) for document in documents]
+        documents=[document_to_response(document) for document in documents]
     )
-

@@ -148,6 +148,15 @@ curl -X POST http://127.0.0.1:8000/agent/run \
 pytest
 ```
 
+## 升级注意
+
+本次版本扩展了 `documents` 和 `chunks` 数据表字段。当前 MVP 还没有引入 Alembic 迁移系统，如果你本地已有旧版本测试数据，启动前建议清空旧数据库和向量库后重新上传或导入文本：
+
+```bash
+rm -rf data/app.db data/chroma data/uploads
+mkdir -p data/chroma data/uploads
+```
+
 ## 项目结构
 
 ```text
@@ -166,6 +175,46 @@ app/
   prompts/
 tests/
 ```
+
+
+
+## 公共书源导入与体裁感知 RAG
+
+本项目现在支持从合法公开书源搜索并导入文学文本，导入后会复用现有文档入库链路：保存文本、自动识别体裁、选择 chunk 策略、embedding、写入向量库和 SQLite。
+
+当前支持书源：
+
+- `gutenberg`：Project Gutenberg 公版英文文学，搜索使用 Gutendex，下载优先选择 plain text。
+- `wikisource`：中文 Wikisource / 维基文库公开文本，使用 MediaWiki API 获取页面纯文本。
+
+搜索作品：
+
+```bash
+curl "http://127.0.0.1:8000/book-sources/search?source=gutenberg&q=pride%20and%20prejudice"
+```
+
+导入作品：
+
+```bash
+curl -X POST http://127.0.0.1:8000/book-sources/import \
+  -H "Content-Type: application/json" \
+  -d '{"source":"gutenberg","source_id":"1342"}'
+```
+
+导入成功后返回 `document.id`，继续用于 `/rag/query`、`/chat`、`/analysis/*`。
+
+上传文件和书源导入都会自动识别文本体裁：
+
+- `english_fiction`
+- `modern_chinese`
+- `classical_poetry`
+- `classical_prose`
+- `poetry_or_lyrics`
+- `unknown`
+
+不同体裁会选择不同 chunk 策略：现代文本使用通用段落窗口切分；古诗词生成整首和句组 chunk；文言文按自然段和句群切分。`/rag/query` 返回的 `citations` 会包含 `document_type`、`chunk_type`、`section_title`，便于解释引用来源。
+
+注意：项目不接入盗版电子书站点或 DRM 内容，只支持用户自行上传合法文本或导入公开合法书源。
 
 ## 后续可扩展方向
 

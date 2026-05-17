@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -55,6 +55,18 @@ class Document(Base):
     status: Mapped[str] = mapped_column(String(32), default="processing")
     chunk_count: Mapped[int] = mapped_column(Integer, default=0)
     error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    title: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    author: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    source_name: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    source_id: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    source_url: Mapped[Optional[str]] = mapped_column(String(1024), nullable=True)
+    license: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    document_type: Mapped[str] = mapped_column(String(64), default="unknown")
+    type_confidence: Mapped[float] = mapped_column(Float, default=0.0)
+    type_reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    chunk_strategy: Mapped[str] = mapped_column(String(64), default="modern")
+
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
@@ -76,6 +88,9 @@ class Chunk(Base):
     content: Mapped[str] = mapped_column(Text)
     source_location: Mapped[str] = mapped_column(String(255))
     vector_id: Mapped[str] = mapped_column(String(128), index=True)
+    chunk_type: Mapped[str] = mapped_column(String(64), default="text")
+    section_title: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    metadata_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     document: Mapped["Document"] = relationship(back_populates="chunks")

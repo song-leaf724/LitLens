@@ -11,6 +11,13 @@ class Citation(BaseModel):
     source_location: str
     content: str
     score: Optional[float] = None
+    document_type: str = "unknown"
+    chunk_type: str = "text"
+    section_title: Optional[str] = None
+    title: Optional[str] = None
+    author: Optional[str] = None
+    source_name: Optional[str] = None
+    source_url: Optional[str] = None
 
 
 class RagQueryRequest(BaseModel):
@@ -23,4 +30,3 @@ class RagQueryRequest(BaseModel):
 class RagQueryResponse(BaseModel):
     answer: str
     citations: List[Citation] = []
-

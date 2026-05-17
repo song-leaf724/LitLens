@@ -38,6 +38,13 @@ async def retrieve_relevant_chunks(
                 source_location=chunk.source_location,
                 content=chunk.content,
                 score=hit.score,
+                document_type=document.document_type if document else "unknown",
+                chunk_type=chunk.chunk_type,
+                section_title=chunk.section_title,
+                title=document.title if document else None,
+                author=document.author if document else None,
+                source_name=document.source_name if document else None,
+                source_url=document.source_url if document else None,
             )
         )
     return citations
@@ -54,11 +61,15 @@ def format_citations_for_prompt(citations: List[Citation]) -> str:
         if total_chars + len(content) > settings.max_context_chars:
             content = content[: max(0, settings.max_context_chars - total_chars)]
         total_chars += len(content)
+        location = _format_location(citation)
         blocks.append(
-            "[引用 {index}] 文件：{filename}；位置：{location}；片段：\n{content}".format(
+            "[引用 {index}] 作品：{title}；作者：{author}；文件：{filename}；体裁：{document_type}；位置：{location}；片段：\n{content}".format(
                 index=index,
+                title=citation.title or citation.filename,
+                author=citation.author or "未知",
                 filename=citation.filename,
-                location=citation.source_location,
+                document_type=citation.document_type,
+                location=location,
                 content=content,
             )
         )
@@ -66,3 +77,8 @@ def format_citations_for_prompt(citations: List[Citation]) -> str:
             break
     return "\n\n".join(blocks)
 
+
+def _format_location(citation: Citation) -> str:
+    if citation.section_title:
+        return f"{citation.section_title} / {citation.chunk_type} / {citation.source_location}"
+    return f"{citation.chunk_type} / {citation.source_location}"
