@@ -3,7 +3,7 @@ import logging
 import math
 import os
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Set
 
 from app.core.config import settings
 
@@ -34,17 +34,16 @@ class VectorStore:
             settings.chroma_persist_dir, "fallback_vectors.json"
         )
         self._fallback_records: Dict[str, Dict[str, Any]] = {}
-        self._collection = None
+        self._client = None
+        self._collections: Dict[int, Any] = {}
+        self._known_dimensions: Set[int] = set()
         self._init_chroma_or_fallback()
 
     def _init_chroma_or_fallback(self) -> None:
         try:
             import chromadb  # type: ignore
 
-            client = chromadb.PersistentClient(path=settings.chroma_persist_dir)
-            self._collection = client.get_or_create_collection(
-                name=settings.chroma_collection_name
-            )
+            self._client = chromadb.PersistentClient(path=settings.chroma_persist_dir)
             self.backend = "chroma"
             logger.info("Vector store backend: ChromaDB")
         except Exception as exc:
@@ -55,8 +54,9 @@ class VectorStore:
     def upsert(self, records: List[VectorRecord]) -> None:
         if not records:
             return
-        if self.backend == "chroma" and self._collection is not None:
-            self._collection.upsert(
+        if self.backend == "chroma" and self._client is not None:
+            collection = self._collection_for_dimension(len(records[0].embedding))
+            collection.upsert(
                 ids=[record.vector_id for record in records],
                 documents=[record.content for record in records],
                 embeddings=[record.embedding for record in records],
@@ -78,14 +78,12 @@ class VectorStore:
         top_k: int,
         document_id: Optional[str] = None,
     ) -> List[VectorHit]:
-        if self.backend == "chroma" and self._collection is not None:
-            where = {"document_id": document_id} if document_id else None
-            results = self._collection.query(
-                query_embeddings=[embedding],
-                n_results=top_k,
-                where=where,
+        if self.backend == "chroma" and self._client is not None:
+            return self._query_chroma(
+                embedding=embedding,
+                top_k=top_k,
+                document_id=document_id,
             )
-            return self._parse_chroma_results(results)
 
         hits: List[VectorHit] = []
         for vector_id, record in self._fallback_records.items():
@@ -102,6 +100,68 @@ class VectorStore:
                 )
             )
         return sorted(hits, key=lambda hit: hit.score, reverse=True)[:top_k]
+
+    def _query_chroma(
+        self,
+        embedding: List[float],
+        top_k: int,
+        document_id: Optional[str] = None,
+    ) -> List[VectorHit]:
+        where = {"document_id": document_id} if document_id else None
+        query_dimension = len(embedding)
+        dimensions = [query_dimension]
+        if document_id:
+            dimensions.extend(
+                dimension
+                for dimension in sorted(self._discover_dimensions())
+                if dimension != query_dimension
+            )
+
+        for dimension in dimensions:
+            if dimension != query_dimension:
+                logger.warning(
+                    "Skip Chroma collection d%s for query dimension d%s. "
+                    "Document %s was likely embedded with a different model; re-upload it to make it searchable.",
+                    dimension,
+                    query_dimension,
+                    document_id,
+                )
+                continue
+            collection = self._collection_for_dimension(dimension)
+            results = collection.query(
+                query_embeddings=[embedding],
+                n_results=top_k,
+                where=where,
+            )
+            hits = self._parse_chroma_results(results)
+            if hits or not document_id:
+                return hits
+        return []
+
+    def _collection_for_dimension(self, dimension: int):
+        self._known_dimensions.add(dimension)
+        if dimension not in self._collections:
+            if self._client is None:
+                raise RuntimeError("ChromaDB client is not initialized.")
+            collection_name = f"{settings.chroma_collection_name}_d{dimension}"
+            self._collections[dimension] = self._client.get_or_create_collection(
+                name=collection_name
+            )
+        return self._collections[dimension]
+
+    def _discover_dimensions(self) -> Set[int]:
+        dimensions = set(self._known_dimensions)
+        if self._client is None:
+            return dimensions
+        prefix = f"{settings.chroma_collection_name}_d"
+        for collection in self._client.list_collections():
+            name = collection.name
+            if not name.startswith(prefix):
+                continue
+            suffix = name.removeprefix(prefix)
+            if suffix.isdigit():
+                dimensions.add(int(suffix))
+        return dimensions
 
     def _parse_chroma_results(self, results: Dict[str, Any]) -> List[VectorHit]:
         ids = results.get("ids", [[]])[0]

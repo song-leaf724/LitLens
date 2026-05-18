@@ -73,9 +73,10 @@ class EvidenceBasedLiteraryWorkflow:
             return run
         except Exception as exc:
             logger.exception("Evidence-based literary workflow failed")
-            self._add_step(db, run.id, role="LiteratureAgent", step_type="error", error_message=str(exc))
+            error_message = self._format_error(exc)
+            self._add_step(db, run.id, role="LiteratureAgent", step_type="error", error_message=error_message)
             run.status = "failed"
-            run.output_text = str(exc)
+            run.output_text = error_message
             run.ended_at = datetime.utcnow()
             db.commit()
             db.refresh(run)
@@ -122,7 +123,11 @@ class EvidenceBasedLiteraryWorkflow:
             user_input=state["task"],
             context=context,
         )
-        plan = await llm_service.chat_completion(messages)
+        plan = await self._llm_or_fallback(
+            messages=messages,
+            fallback="计划阶段模型调用失败，降级为：先检索原文证据，再进行 Reader/Critic/Verifier 分析。",
+            max_tokens=600,
+        )
         self._add_step(db, state["run_id"], role="PlannerAgent", step_type="plan", output_text=plan)
         return {"plan": plan}
 
@@ -156,7 +161,11 @@ class EvidenceBasedLiteraryWorkflow:
                 user_input=state["task"],
                 context=state.get("citation_context", "未检索到可用原文片段。"),
             )
-            output = await llm_service.chat_completion(messages)
+            output = await self._llm_or_fallback(
+                messages=messages,
+                fallback="Reader Agent 模型调用失败，已保留检索到的原文证据，无法生成完整细读。",
+                max_tokens=900,
+            )
         self._add_step(state["db"], state["run_id"], role=READER_AGENT.name, step_type="reader_analysis", output_text=output)
         return {"reader_output": output}
 
@@ -176,7 +185,11 @@ class EvidenceBasedLiteraryWorkflow:
                 user_input=state["task"],
                 context=context,
             )
-            output = await llm_service.chat_completion(messages)
+            output = await self._llm_or_fallback(
+                messages=messages,
+                fallback="Critic Agent 模型调用失败，无法补充主题、象征和叙事结构分析。",
+                max_tokens=900,
+            )
         self._add_step(state["db"], state["run_id"], role=CRITIC_AGENT.name, step_type="critic_analysis", output_text=output)
         return {"critic_output": output}
 
@@ -196,7 +209,14 @@ class EvidenceBasedLiteraryWorkflow:
                 user_input=state["task"],
                 context=context,
             )
-            output = await llm_service.chat_completion(messages)
+            output = await self._llm_or_fallback(
+                messages=messages,
+                fallback=(
+                    "Verifier Agent 模型调用失败，降级检查结果：最终回答只能使用已检索到的引用片段，"
+                    "并应避免声称原文没有支持的结论。"
+                ),
+                max_tokens=600,
+            )
         self._add_step(state["db"], state["run_id"], role=VERIFIER_AGENT.name, step_type="verification", output_text=output)
         return {"verifier_output": output}
 
@@ -221,9 +241,51 @@ class EvidenceBasedLiteraryWorkflow:
                 user_input=state["task"],
                 context=context,
             )
-            answer = await llm_service.chat_completion(messages)
+            answer = await self._llm_or_fallback(
+                messages=messages,
+                fallback=self._fallback_final_answer(state),
+                max_tokens=900,
+            )
         self._add_step(state["db"], state["run_id"], role="FinalWriterAgent", step_type="final", output_text=answer)
         return {"final_answer": answer}
+
+    async def _llm_or_fallback(
+        self,
+        messages: List[Dict[str, str]],
+        fallback: str,
+        max_tokens: int,
+    ) -> str:
+        try:
+            return await llm_service.chat_completion(messages, max_tokens=max_tokens)
+        except Exception as exc:  # pragma: no cover - depends on external API behavior
+            logger.warning("Agent LLM step failed, using fallback: %s", self._format_error(exc))
+            return f"{fallback}\n\n[模型调用错误：{self._format_error(exc)}]"
+
+    def _fallback_final_answer(self, state: LiteraryAgentState) -> str:
+        citations = state.get("citation_context") or "未检索到可用原文片段。"
+        reader = state.get("reader_output") or "Reader Agent 未生成结果。"
+        critic = state.get("critic_output") or "Critic Agent 未生成结果。"
+        verifier = state.get("verifier_output") or "Verifier Agent 未生成结果。"
+        return (
+            "## 核心结论\n"
+            "最终汇总模型调用失败，以下为基于已有步骤的降级回答。\n\n"
+            "## 原文依据\n"
+            f"{citations}\n\n"
+            "## 细读分析\n"
+            f"### Reader 分析\n{reader}\n\n"
+            f"### Critic 分析\n{critic}\n\n"
+            "## 证据边界\n"
+            f"{verifier}\n\n"
+            "## 可继续深读\n"
+            "- 重新运行最终汇总节点，获得更完整的结构化回答。\n"
+            "- 对照引用片段检查每个判断是否有原文依据。"
+        )
+
+    def _format_error(self, exc: Exception) -> str:
+        message = str(exc).strip()
+        if message:
+            return message
+        return exc.__class__.__name__
 
     def _citation_context(self, citations: List[Dict[str, Any]]) -> str:
         if not citations:
