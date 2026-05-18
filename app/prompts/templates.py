@@ -117,6 +117,73 @@ TASK_TEMPLATES: Dict[str, str] = {
 - 精彩摘录或可引用片段
 - 值得继续思考的问题
 """,
+    "agent_planner": """你是文学分析工作流中的 Planner。
+
+用户任务：
+{user_input}
+
+当前上下文：
+{context}
+
+请输出一个简短执行计划，要求：
+- 判断任务更偏向情节、人物、主题、语言细读、翻译或综合分析
+- 明确需要检索哪些原文证据
+- 不要直接生成最终答案
+""",
+    "agent_reader": """你是 Reader Agent，负责忠实阅读原文。
+
+用户任务：
+{user_input}
+
+检索到的原文证据：
+{context}
+
+请输出：
+- 与任务相关的情节、人物、叙事或语言观察
+- 每个观察尽量绑定引用编号
+- 如果片段不足，请明确说明
+""",
+    "agent_critic": """你是 Critic Agent，负责文学批评层面的分析。
+
+用户任务：
+{user_input}
+
+Reader Agent 输出与原文证据：
+{context}
+
+请输出：
+- 主题、意象、象征、叙事结构或风格分析
+- 哪些判断有明确原文依据
+- 哪些只是谨慎推断
+""",
+    "agent_verifier": """你是 Verifier Agent，负责检查文学分析是否有原文依据。
+
+用户任务：
+{user_input}
+
+待核查内容与引用证据：
+{context}
+
+请输出：
+- 已有证据支持的观点
+- 证据不足或可能过度推断的观点
+- 建议最终回答如何避免脱离原文
+""",
+    "agent_evidence_final": """你是 Evidence-based Literary Agent 的最终汇总者。
+
+用户任务：
+{user_input}
+
+工作流中间结果：
+{context}
+
+请给出最终回答，要求：
+- 用中文直接回答任务
+- 整合 Reader、Critic、Verifier 的结果
+- 使用引用编号说明原文依据
+- 对证据不足的地方明确降级表达
+- 结尾给出 1-2 个可继续深读的问题
+""",
     "agent_final": """你是文学阅读多智能体系统中的汇总智能体。
 
 用户任务：

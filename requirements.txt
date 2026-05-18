@@ -8,4 +8,4 @@ sqlalchemy>=2.0.0
 httpx>=0.26.0
 chromadb>=0.4.24
 pytest>=8.0.0
-
+langgraph>=1.0.0,<2.0.0

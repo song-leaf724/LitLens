@@ -28,6 +28,14 @@ class EmbeddingService:
         return (await self.embed_texts([text]))[0]
 
     async def _embed_with_api(self, texts: List[str]) -> List[List[float]]:
+        embeddings: List[List[float]] = []
+        batch_size = settings.embedding_batch_size
+        for start in range(0, len(texts), batch_size):
+            batch = texts[start : start + batch_size]
+            embeddings.extend(await self._embed_batch_with_api(batch))
+        return embeddings
+
+    async def _embed_batch_with_api(self, texts: List[str]) -> List[List[float]]:
         url = f"{settings.llm_base_url.rstrip('/')}/embeddings"
         payload = {"model": settings.embedding_model_name, "input": texts}
         headers = {

@@ -13,11 +13,13 @@ class Settings(BaseSettings):
     upload_dir: str = "./data/uploads"
     chroma_persist_dir: str = "./data/chroma"
     chroma_collection_name: str = "literature_chunks"
+    book_source_proxy: Optional[str] = None
 
     llm_base_url: str = "https://api.openai.com/v1"
     llm_api_key: Optional[str] = None
     llm_model_name: str = "gpt-4o-mini"
     embedding_model_name: str = "text-embedding-3-small"
+    embedding_batch_size: int = Field(default=16, ge=1, le=128)
     llm_timeout_seconds: int = 60
     llm_use_fake: bool = False
 

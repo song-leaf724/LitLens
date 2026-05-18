@@ -19,7 +19,7 @@ class WikisourceProvider:
             "utf8": 1,
         }
         try:
-            async with httpx.AsyncClient(timeout=20.0, headers=self._headers()) as client:
+            async with httpx.AsyncClient(**async_client_options(20.0, self._headers())) as client:
                 response = await client.get(self.api_base, params=params)
                 response.raise_for_status()
                 payload = response.json()
@@ -53,7 +53,7 @@ class WikisourceProvider:
             "utf8": 1,
         }
         try:
-            async with httpx.AsyncClient(timeout=30.0, headers=self._headers()) as client:
+            async with httpx.AsyncClient(**async_client_options(30.0, self._headers())) as client:
                 response = await client.get(self.api_base, params=params)
                 response.raise_for_status()
                 payload = response.json()

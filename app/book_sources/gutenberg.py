@@ -4,16 +4,17 @@ from typing import Dict, List, Optional
 import httpx
 
 from app.book_sources.base import BookSearchItem, BookSourceError, BookSourceNotFoundError, DownloadedBook
+from app.book_sources.http_client import async_client_options
 
 
 class GutenbergProvider:
     source_name = "gutenberg"
-    api_base = "https://gutendex.com/books"
+    api_base = "https://gutendex.com/books/"
 
     async def search(self, query: str, limit: int = 10) -> List[BookSearchItem]:
         params = {"search": query}
         try:
-            async with httpx.AsyncClient(timeout=20.0, headers=self._headers()) as client:
+            async with httpx.AsyncClient(**async_client_options(20.0, self._headers())) as client:
                 response = await client.get(self.api_base, params=params)
                 response.raise_for_status()
                 payload = response.json()
@@ -44,7 +45,7 @@ class GutenbergProvider:
 
     async def download(self, source_id: str) -> DownloadedBook:
         try:
-            async with httpx.AsyncClient(timeout=30.0, headers=self._headers()) as client:
+            async with httpx.AsyncClient(**async_client_options(30.0, self._headers())) as client:
                 detail_response = await client.get(f"{self.api_base}/{source_id}")
                 if detail_response.status_code == 404:
                     raise BookSourceNotFoundError(f"Project Gutenberg 未找到作品：{source_id}")
