@@ -33,3 +33,22 @@ def test_upload_document_and_rag_query() -> None:
         assert payload["citations"]
         assert "母亲" in payload["citations"][0]["content"]
 
+        delete_response = client.delete(f"/documents/{document['id']}")
+        assert delete_response.status_code == 200
+        assert delete_response.json()["deleted"] is True
+
+        list_response = client.get("/documents")
+        assert list_response.status_code == 200
+        document_ids = {item["id"] for item in list_response.json()["documents"]}
+        assert document["id"] not in document_ids
+
+        deleted_rag_response = client.post(
+            "/rag/query",
+            json={
+                "document_id": document["id"],
+                "query": "这段文字中的等待象征什么？",
+            },
+        )
+        assert deleted_rag_response.status_code == 200
+        assert deleted_rag_response.json()["citations"] == []
+

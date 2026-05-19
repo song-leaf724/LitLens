@@ -81,6 +81,12 @@ curl -X POST http://127.0.0.1:8000/book-sources/import \
   -d '{"source":"gutenberg","source_id":"1342"}'
 ```
 
+Delete a document:
+
+```bash
+curl -X DELETE http://127.0.0.1:8000/documents/your-document-id
+```
+
 Ask a RAG question:
 
 ```bash

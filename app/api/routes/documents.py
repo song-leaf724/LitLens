@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.rag.parser import UnsupportedDocumentError
-from app.schemas.documents import DocumentListResponse, DocumentResponse
+from app.schemas.documents import DocumentDeleteResponse, DocumentListResponse, DocumentResponse
 from app.services.document_service import document_service
 
 router = APIRouter()
@@ -55,3 +55,11 @@ def list_documents(db: Session = Depends(get_db)) -> DocumentListResponse:
     return DocumentListResponse(
         documents=[document_to_response(document) for document in documents]
     )
+
+
+@router.delete("/{document_id}", response_model=DocumentDeleteResponse)
+def delete_document(document_id: str, db: Session = Depends(get_db)) -> DocumentDeleteResponse:
+    deleted = document_service.delete_document(db, document_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="没有找到这个文本，可能已经被删除。")
+    return DocumentDeleteResponse(id=document_id)

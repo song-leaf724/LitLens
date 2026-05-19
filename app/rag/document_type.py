@@ -106,7 +106,11 @@ class DocumentTypeDetector:
             unit for unit in re.split(r"[，,。！？；;!?]\s*", text) if unit.strip()
         ]
         has_line_structure = len(lines) >= 2
-        units = lines if has_line_structure else sentence_units
+        metric_poem_lines = [line for line in lines if self._cjk_len(line) in {5, 7}]
+        if has_line_structure and len(metric_poem_lines) >= 4:
+            units = metric_poem_lines
+        else:
+            units = lines if has_line_structure else sentence_units
         unit_lengths = [self._cjk_len(unit) for unit in units]
         if not unit_lengths:
             return None

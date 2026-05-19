@@ -41,7 +41,7 @@
             </select>
             <button id="sourceSearchButton" class="secondary" type="button">搜索</button>
           </div>
-          <input id="sourceQuery" type="text" placeholder="搜索作品，如 pride and prejudice" />
+          <input id="sourceQuery" type="text" placeholder="搜索作品名或作者，如 Pride and Prejudice / 静夜思" />
           <div id="sourceResults" class="source-results empty">搜索公开文本后，可一键导入。</div>
         </section>
 
@@ -69,14 +69,14 @@
               <p class="eyebrow">问题</p>
               <h2>基于原文提问</h2>
             </div>
-            <label class="topk-control">Top K
+            <label class="topk-control">引用数量
               <input id="topKInput" type="number" min="1" max="20" value="5" />
             </label>
           </div>
           <textarea id="queryInput" rows="5" placeholder="例如：分析这首诗如何通过月光意象表达思乡之情"></textarea>
           <div class="actions">
-            <button id="ragButton" class="primary" type="button">RAG 问答</button>
-            <button id="agentButton" class="accent" type="button">Agent 深度分析</button>
+            <button id="ragButton" class="primary" type="button">基于原文回答</button>
+            <button id="agentButton" class="accent" type="button">深度细读</button>
           </div>
         </section>
 
@@ -99,18 +99,18 @@
 
         <section class="panel citations-panel">
           <div class="panel-heading">
-            <h2>引用片段</h2>
+            <h2>原文依据</h2>
             <span id="citationCount">0</span>
           </div>
-          <div id="citationsList" class="citation-list empty">运行 RAG 或 Agent 后显示引用。</div>
+          <div id="citationsList" class="citation-list empty">回答时会在这里列出用到的原文。</div>
         </section>
 
         <section class="panel steps-panel">
           <div class="panel-heading">
-            <h2>Agent 步骤</h2>
+            <h2>分析过程</h2>
             <span id="stepCount">0</span>
           </div>
-          <div id="stepsList" class="steps-list empty">运行 Agent 后显示执行轨迹。</div>
+          <div id="stepsList" class="steps-list empty">运行深度细读后，这里会展示分析过程。</div>
         </section>
       </aside>
     </div>

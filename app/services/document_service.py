@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import re
 import uuid
@@ -15,6 +16,8 @@ from app.rag.document_type import document_type_detector
 from app.rag.embeddings import embedding_service
 from app.rag.parser import parse_document
 from app.rag.vector_store import VectorRecord, vector_store
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -165,6 +168,23 @@ class DocumentService:
     def list_documents(self, db: Session) -> List[Document]:
         stmt = select(Document).order_by(Document.created_at.desc())
         return list(db.execute(stmt).scalars().all())
+
+    def delete_document(self, db: Session, document_id: str) -> bool:
+        document = db.get(Document, document_id)
+        if not document:
+            return False
+
+        storage_path = document.storage_path
+        vector_store.delete_by_document_id(document_id)
+        db.delete(document)
+        db.commit()
+
+        if storage_path and os.path.exists(storage_path):
+            try:
+                os.remove(storage_path)
+            except OSError as exc:
+                logger.warning("Failed to remove document file %s: %s", storage_path, exc)
+        return True
 
     def _safe_filename(self, filename: str) -> str:
         return re.sub(r"[^a-zA-Z0-9._-]", "_", filename)[:120] or "upload.txt"

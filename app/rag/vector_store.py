@@ -101,6 +101,23 @@ class VectorStore:
             )
         return sorted(hits, key=lambda hit: hit.score, reverse=True)[:top_k]
 
+    def delete_by_document_id(self, document_id: str) -> None:
+        if self.backend == "chroma" and self._client is not None:
+            for dimension in sorted(self._discover_dimensions()):
+                collection = self._collection_for_dimension(dimension)
+                collection.delete(where={"document_id": document_id})
+            return
+
+        deleted_ids = [
+            vector_id
+            for vector_id, record in self._fallback_records.items()
+            if record.get("metadata", {}).get("document_id") == document_id
+        ]
+        for vector_id in deleted_ids:
+            self._fallback_records.pop(vector_id, None)
+        if deleted_ids:
+            self._save_fallback()
+
     def _query_chroma(
         self,
         embedding: List[float],

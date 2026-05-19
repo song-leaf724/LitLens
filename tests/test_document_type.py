@@ -30,3 +30,11 @@ def test_detect_modern_chinese() -> None:
     result = document_type_detector.detect(text)
 
     assert result.document_type == "modern_chinese"
+
+
+def test_detect_classical_poetry_with_title_and_author() -> None:
+    text = "静夜思\n唐  李白\n床前明月光\n疑是地上霜\n举头望明月\n低头思故乡"
+    result = document_type_detector.detect(text)
+
+    assert result.document_type == "classical_poetry"
+    assert result.chunk_strategy == "poetry"

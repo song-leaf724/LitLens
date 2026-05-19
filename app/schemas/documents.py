@@ -25,3 +25,8 @@ class DocumentResponse(BaseModel):
 
 class DocumentListResponse(BaseModel):
     documents: List[DocumentResponse]
+
+
+class DocumentDeleteResponse(BaseModel):
+    id: str
+    deleted: bool = True

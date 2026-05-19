@@ -95,6 +95,12 @@ curl -X POST http://127.0.0.1:8000/documents/upload \
 curl http://127.0.0.1:8000/documents
 ```
 
+删除文档：
+
+```bash
+curl -X DELETE http://127.0.0.1:8000/documents/替换为文档ID
+```
+
 RAG 问答：
 
 ```bash
