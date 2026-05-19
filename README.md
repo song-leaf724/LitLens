@@ -11,14 +11,14 @@
 - OpenAI-compatible LLM 调用，支持 `base_url / api_key / model_name`
 - `/chat` 普通文学问答
 - `/chat/stream` SSE 流式输出
-- `.txt` / `.md` 文档上传
+- `.txt` / `.md` / `.pdf` / `.epub` 文档上传与解析
 - 文档解析、chunking、embedding、向量入库
 - ChromaDB 向量库，Chroma 不可用时自动 fallback 到本地 JSON 向量检索
 - `/rag/query` 检索增强问答，返回引用片段
 - 情节梳理、人物分析、主题意象分析、段落细读、双语赏析
 - 结构化阅读笔记生成
 - SQLite 保存会话、消息、文档、chunk、Agent 运行步骤
-- 基于 LangGraph 的证据型 Agent 工作流：Planner / Retriever / Reader / Critic / Verifier / Final Writer
+- 基于 LangGraph 的证据型 Agent 工作流，支持快速模式和深度模式
 
 ## 安装依赖
 
@@ -89,6 +89,8 @@ curl -X POST http://127.0.0.1:8000/documents/upload \
   -F "file=@./sample.txt"
 ```
 
+也可以上传 `.pdf` 或 `.epub`。如果 PDF 是扫描版图片，需要先做 OCR。
+
 查看文档：
 
 ```bash
@@ -154,10 +156,15 @@ curl -X POST http://127.0.0.1:8000/notes/generate \
 ```bash
 curl -X POST http://127.0.0.1:8000/agent/run \
   -H "Content-Type: application/json" \
-  -d '{"document_id":"替换为文档ID","task":"分析作品中人物命运和主题之间的关系","top_k":5}'
+  -d '{"document_id":"替换为文档ID","task":"分析作品中人物命运和主题之间的关系","top_k":5,"mode":"deep"}'
 ```
 
-`/agent/run` 内部使用 LangGraph 编排 `plan -> retrieve -> reader -> critic -> verifier -> final`，响应中的 `steps` 会返回每一步的执行轨迹。
+`mode` 可选：
+
+- `fast`：快速模式，只执行“检索原文 -> 快速回答”，延迟更低。
+- `deep`：深度模式，执行“计划 -> 检索 -> Reader -> Critic -> Verifier -> 汇总”，适合展示多智能体编排。
+
+`/agent/run` 内部使用 LangGraph 编排，响应中的 `steps` 会返回每一步的执行轨迹。
 
 ## 运行测试
 

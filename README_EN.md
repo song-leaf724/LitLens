@@ -9,12 +9,12 @@ LitLens is a FastAPI-based AI backend for close reading and evidence-based liter
 - FastAPI REST backend with auto-generated Swagger docs.
 - OpenAI-compatible LLM and embedding APIs.
 - `.env` configuration for model, proxy, database, and RAG settings.
-- Upload `.txt` / `.md` documents.
+- Upload and parse `.txt`, `.md`, `.pdf`, and `.epub` documents.
 - Import public texts from Project Gutenberg / Gutendex and Wikisource.
 - Genre-aware chunking for English fiction, modern Chinese prose, classical poetry, and classical prose.
 - Chroma vector store with SQLite metadata.
 - RAG answers with citation metadata.
-- LangGraph-based evidence workflow: `plan -> retrieve -> reader -> critic -> verifier -> final`.
+- LangGraph-based evidence workflow with `fast` and `deep` modes.
 
 ## Quick Start
 
@@ -100,14 +100,19 @@ Run the evidence-based agent workflow:
 ```bash
 curl -X POST http://127.0.0.1:8000/agent/run \
   -H "Content-Type: application/json" \
-  -d '{"document_id":"your-document-id","task":"Analyze how imagery supports the central theme.","top_k":5}'
+  -d '{"document_id":"your-document-id","task":"Analyze how imagery supports the central theme.","top_k":5,"mode":"deep"}'
 ```
+
+`mode` options:
+
+- `fast`: retrieve evidence and generate one concise answer.
+- `deep`: run the full `plan -> retrieve -> reader -> critic -> verifier -> final` workflow.
 
 ## Architecture
 
 ```text
 Upload / Import
-  -> parse text
+  -> parse text / PDF / EPUB
   -> detect document type
   -> genre-aware chunking
   -> embedding

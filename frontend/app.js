@@ -22,6 +22,7 @@ const els = {
   documentInfo: $('documentInfo'),
   queryInput: $('queryInput'),
   topKInput: $('topKInput'),
+  agentModeSelect: $('agentModeSelect'),
   ragButton: $('ragButton'),
   agentButton: $('agentButton'),
   answerContent: $('answerContent'),
@@ -85,6 +86,7 @@ const STEP_TYPE_LABELS = {
   critic_analysis: '文学分析',
   verification: '依据核查',
   final: '整理回答',
+  fast_answer: '快速回答',
   error: '运行异常',
 };
 
@@ -95,13 +97,14 @@ const ROLE_LABELS = {
   CriticAgent: '文学分析',
   VerifierAgent: '依据核查',
   FinalWriterAgent: '汇总',
+  FastLiteraryAgent: '快速分析',
   LiteratureAgent: '系统',
 };
 
 const AGENT_STATUS_LABELS = {
-  completed: '深度细读完成',
-  failed: '深度细读未完成',
-  running: '正在深度细读',
+  completed: { fast: '快速分析完成', deep: '深度细读完成' },
+  failed: { fast: '快速分析未完成', deep: '深度细读未完成' },
+  running: { fast: '正在快速分析', deep: '正在深度细读' },
 };
 
 function escapeHtml(value) {
@@ -439,7 +442,7 @@ function renderSteps(steps = state.steps) {
   els.stepCount.textContent = String(state.steps.length);
   if (!state.steps.length) {
     els.stepsList.className = 'steps-list empty';
-    els.stepsList.textContent = '运行深度细读后，这里会展示分析过程。';
+    els.stepsList.textContent = '运行快速分析或深度细读后，这里会展示分析过程。';
     return;
   }
   els.stepsList.className = 'steps-list';
@@ -458,6 +461,20 @@ function getTopK() {
   const value = Number.parseInt(els.topKInput.value, 10);
   if (Number.isNaN(value)) return 5;
   return Math.min(20, Math.max(1, value));
+}
+
+function getAgentMode() {
+  return els.agentModeSelect?.value === 'fast' ? 'fast' : 'deep';
+}
+
+function agentModeLabel(mode) {
+  return mode === 'fast' ? '快速分析' : '深度细读';
+}
+
+function agentStatusLabel(status, mode) {
+  const labels = AGENT_STATUS_LABELS[status];
+  if (labels) return labels[mode] || labels.deep;
+  return agentModeLabel(mode);
 }
 
 function requireDocumentAndQuestion() {
@@ -586,19 +603,22 @@ async function runAgent() {
     showToast(error.message, 'error');
     return;
   }
-  setBusy(els.agentButton, true, '细读中...');
-  els.answerMode.textContent = '深度细读';
+  const mode = getAgentMode();
+  setBusy(els.agentButton, true, mode === 'fast' ? '分析中...' : '细读中...');
+  els.answerMode.textContent = agentModeLabel(mode);
   els.answerContent.className = 'answer empty';
-  els.answerContent.textContent = '正在分步骤阅读原文、分析主题，并核查依据...';
+  els.answerContent.textContent = mode === 'fast'
+    ? '正在快速查找原文，并生成简要回答...'
+    : '正在分步骤阅读原文、分析主题，并核查依据...';
   renderCitations([]);
   renderSteps([]);
   try {
     const payload = await apiFetch('/agent/run', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ document_id: doc.id, task: query, task_type: 'literature', top_k: getTopK() }),
+      body: JSON.stringify({ document_id: doc.id, task: query, task_type: 'literature', top_k: getTopK(), mode }),
     });
-    els.answerMode.textContent = AGENT_STATUS_LABELS[payload.status] || '深度细读完成';
+    els.answerMode.textContent = agentStatusLabel(payload.status, mode);
     els.answerContent.className = 'answer';
     els.answerContent.innerHTML = markdownToHtml(payload.answer || '暂时没有生成回答。');
     renderSteps(payload.steps || []);
@@ -614,7 +634,7 @@ async function runAgent() {
   } catch (error) {
     els.answerContent.className = 'answer empty';
     els.answerContent.textContent = error.message;
-    showToast(`深度细读失败：${error.message}`, 'error');
+    showToast(`${agentModeLabel(mode)}失败：${error.message}`, 'error');
   } finally {
     setBusy(els.agentButton, false);
   }

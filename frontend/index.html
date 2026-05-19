@@ -20,10 +20,10 @@
         <section class="panel upload-panel">
           <div class="panel-heading">
             <h2>上传文本</h2>
-            <span>.txt / .md</span>
+            <span>.txt / .md / .pdf / .epub</span>
           </div>
           <label class="file-box" for="fileInput">
-            <input id="fileInput" type="file" accept=".txt,.md,text/plain,text/markdown" />
+            <input id="fileInput" type="file" accept=".txt,.md,.pdf,.epub,text/plain,text/markdown,application/pdf,application/epub+zip" />
             <span id="fileName">选择文学作品或片段</span>
           </label>
           <button id="uploadButton" class="primary full" type="button">上传并入库</button>
@@ -69,14 +69,22 @@
               <p class="eyebrow">问题</p>
               <h2>基于原文提问</h2>
             </div>
-            <label class="topk-control">引用数量
-              <input id="topKInput" type="number" min="1" max="20" value="5" />
-            </label>
+            <div class="query-controls">
+              <label class="topk-control">引用数量
+                <input id="topKInput" type="number" min="1" max="20" value="5" />
+              </label>
+              <label class="mode-control">分析方式
+                <select id="agentModeSelect">
+                  <option value="fast">快速</option>
+                  <option value="deep" selected>深度</option>
+                </select>
+              </label>
+            </div>
           </div>
           <textarea id="queryInput" rows="5" placeholder="例如：分析这首诗如何通过月光意象表达思乡之情"></textarea>
           <div class="actions">
             <button id="ragButton" class="primary" type="button">基于原文回答</button>
-            <button id="agentButton" class="accent" type="button">深度细读</button>
+            <button id="agentButton" class="accent" type="button">开始分析</button>
           </div>
         </section>
 

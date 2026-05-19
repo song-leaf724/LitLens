@@ -61,3 +61,38 @@ def test_agent_workflow_reports_insufficient_evidence() -> None:
     assert "verification" in step_types
     verifier_step = next(step for step in payload["steps"] if step["step_type"] == "verification")
     assert "证据不足" in verifier_step["output_text"]
+
+
+
+def test_agent_workflow_fast_mode_runs_short_pipeline() -> None:
+    sample = (
+        "床前明月光\n"
+        "疑是地上霜\n"
+        "举头望明月\n"
+        "低头思故乡"
+    )
+
+    with TestClient(app) as client:
+        upload_response = client.post(
+            "/documents/upload",
+            files={"file": ("fast-agent-poem.txt", sample.encode("utf-8"), "text/plain")},
+        )
+        assert upload_response.status_code == 200
+        document_id = upload_response.json()["id"]
+
+        response = client.post(
+            "/agent/run",
+            json={
+                "document_id": document_id,
+                "task": "这首诗如何表达思乡？",
+                "top_k": 3,
+                "mode": "fast",
+            },
+        )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "completed"
+    assert payload["mode"] == "fast"
+    step_types = [step["step_type"] for step in payload["steps"]]
+    assert step_types == ["retrieve", "fast_answer"]

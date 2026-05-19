@@ -9,6 +9,7 @@ class AgentTask:
     document_id: Optional[str] = None
     session_id: Optional[str] = None
     top_k: Optional[int] = None
+    mode: str = "deep"
 
 
 @dataclass

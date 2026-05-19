@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Literal, List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -9,6 +9,7 @@ class AgentRunRequest(BaseModel):
     document_id: Optional[str] = None
     task_type: str = "literature"
     top_k: Optional[int] = Field(default=None, ge=1, le=20)
+    mode: Literal["fast", "deep"] = "deep"
 
 
 class AgentStepResponse(BaseModel):
@@ -24,5 +25,6 @@ class AgentRunResponse(BaseModel):
     run_id: str
     status: str
     answer: str
+    mode: str = "deep"
     steps: List[AgentStepResponse] = []
 

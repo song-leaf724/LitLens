@@ -24,6 +24,7 @@ class LiteraryAgentState(TypedDict, total=False):
     document_id: Optional[str]
     session_id: Optional[str]
     top_k: Optional[int]
+    mode: str
     plan: str
     citations: List[Dict[str, Any]]
     citation_context: str
@@ -35,11 +36,12 @@ class LiteraryAgentState(TypedDict, total=False):
 
 
 class EvidenceBasedLiteraryWorkflow:
-    """LangGraph-based evidence workflow: plan -> retrieve -> reader -> critic -> verifier -> final."""
+    """LangGraph workflows for fast and deep evidence-based literary analysis."""
 
     def __init__(self) -> None:
         self.registry = build_default_registry()
-        self._graph = None
+        self._deep_graph = None
+        self._fast_graph = None
 
     async def run(self, db: Session, task: AgentTask) -> AgentRun:
         run = AgentRun(
@@ -60,11 +62,12 @@ class EvidenceBasedLiteraryWorkflow:
             "document_id": task.document_id,
             "session_id": task.session_id,
             "top_k": task.top_k,
+            "mode": task.mode,
             "errors": [],
         }
 
         try:
-            result = await self._compiled_graph().ainvoke(state)
+            result = await self._compiled_graph(task.mode).ainvoke(state)
             run.status = "completed"
             run.output_text = result.get("final_answer", "")
             run.ended_at = datetime.utcnow()
@@ -82,9 +85,15 @@ class EvidenceBasedLiteraryWorkflow:
             db.refresh(run)
             return run
 
-    def _compiled_graph(self):
-        if self._graph is not None:
-            return self._graph
+    def _compiled_graph(self, mode: str):
+        normalized_mode = mode if mode in {"fast", "deep"} else "deep"
+        if normalized_mode == "fast":
+            return self._compiled_fast_graph()
+        return self._compiled_deep_graph()
+
+    def _compiled_deep_graph(self):
+        if self._deep_graph is not None:
+            return self._deep_graph
         try:
             from langgraph.graph import END, StateGraph
         except ImportError as exc:  # pragma: no cover - environment setup guard
@@ -105,8 +114,26 @@ class EvidenceBasedLiteraryWorkflow:
         graph.add_edge("critic", "verifier")
         graph.add_edge("verifier", "final")
         graph.add_edge("final", END)
-        self._graph = graph.compile()
-        return self._graph
+        self._deep_graph = graph.compile()
+        return self._deep_graph
+
+    def _compiled_fast_graph(self):
+        if self._fast_graph is not None:
+            return self._fast_graph
+        try:
+            from langgraph.graph import END, StateGraph
+        except ImportError as exc:  # pragma: no cover - environment setup guard
+            raise RuntimeError("LangGraph is not installed. Run `pip install -r requirements.txt`.") from exc
+
+        graph = StateGraph(LiteraryAgentState)
+        graph.add_node("retriever", self.retriever_node)
+        graph.add_node("fast_final", self.fast_final_node)
+
+        graph.set_entry_point("retriever")
+        graph.add_edge("retriever", "fast_final")
+        graph.add_edge("fast_final", END)
+        self._fast_graph = graph.compile()
+        return self._fast_graph
 
     async def planner_node(self, state: LiteraryAgentState) -> Dict[str, Any]:
         db = state["db"]
@@ -151,6 +178,26 @@ class EvidenceBasedLiteraryWorkflow:
             output_text=json.dumps(observation, ensure_ascii=False, indent=2),
         )
         return {"citations": citations, "citation_context": citation_context}
+
+    async def fast_final_node(self, state: LiteraryAgentState) -> Dict[str, Any]:
+        if not state.get("citations"):
+            answer = (
+                "当前证据不足：系统没有检索到可用的原文片段，因此不能基于原文完成可靠回答。"
+                "请先上传或导入作品文本，或换一个更贴近原文的问题。"
+            )
+        else:
+            messages = build_literature_messages(
+                task_type="agent_fast_final",
+                user_input=state["task"],
+                context=state.get("citation_context", "未检索到可用原文片段。"),
+            )
+            answer = await self._llm_or_fallback(
+                messages=messages,
+                fallback=self._fallback_fast_answer(state),
+                max_tokens=700,
+            )
+        self._add_step(state["db"], state["run_id"], role="FastLiteraryAgent", step_type="fast_answer", output_text=answer)
+        return {"final_answer": answer}
 
     async def reader_node(self, state: LiteraryAgentState) -> Dict[str, Any]:
         if not state.get("citations"):
@@ -260,6 +307,17 @@ class EvidenceBasedLiteraryWorkflow:
         except Exception as exc:  # pragma: no cover - depends on external API behavior
             logger.warning("Agent LLM step failed, using fallback: %s", self._format_error(exc))
             return f"{fallback}\n\n[模型调用错误：{self._format_error(exc)}]"
+
+    def _fallback_fast_answer(self, state: LiteraryAgentState) -> str:
+        citations = state.get("citation_context") or "未检索到可用原文片段。"
+        return (
+            "## 简要回答\n"
+            "快速回答模型调用失败，以下是基于已检索原文的降级结果。请结合右侧原文依据继续核对。\n\n"
+            "## 原文依据\n"
+            f"{citations}\n\n"
+            "## 需要谨慎的地方\n"
+            "当前回答只使用已检索到的片段，涉及作者生平、创作年代或外部史料的问题需要额外资料支持。"
+        )
 
     def _fallback_final_answer(self, state: LiteraryAgentState) -> str:
         citations = state.get("citation_context") or "未检索到可用原文片段。"

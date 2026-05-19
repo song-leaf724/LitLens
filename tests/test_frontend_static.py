@@ -10,6 +10,8 @@ def test_frontend_workspace_is_served() -> None:
     assert response.status_code == 200
     assert "LitLens 阅读工作台" in response.text
     assert "基于原文回答" in response.text
+    assert ".pdf / .epub" in response.text
+    assert "分析方式" in response.text
     assert "原文依据" in response.text
     assert "/app/app.js" in response.text
 
@@ -25,5 +27,7 @@ def test_frontend_assets_are_served() -> None:
     assert "查找原文" in js_response.text
     assert "deleteDocument" in js_response.text
     assert "文本已删除" in js_response.text
+    assert "getAgentMode" in js_response.text
+    assert "fast_answer" in js_response.text
     assert css_response.status_code == 200
     assert ".shell" in css_response.text

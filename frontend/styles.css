@@ -192,13 +192,22 @@ input:focus, select:focus, textarea:focus {
 
 .query-card textarea { min-height: 150px; }
 
-.topk-control {
+.query-controls {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.topk-control, .mode-control {
   width: 92px;
   color: var(--muted);
   font-size: 0.78rem;
 }
 
-.topk-control input { margin-top: 4px; }
+.mode-control { width: 118px; }
+
+.topk-control input, .mode-control select { margin-top: 4px; }
 
 .actions {
   display: flex;
@@ -405,6 +414,7 @@ input:focus, select:focus, textarea:focus {
   .shell { grid-template-columns: 1fr; padding: 10px; }
   .inspector { display: flex; }
   .document-banner, .query-toolbar { flex-direction: column; }
+  .query-controls { justify-content: flex-start; }
   .meta-row { text-align: left; align-self: auto; }
   .actions button { width: 100%; }
 }

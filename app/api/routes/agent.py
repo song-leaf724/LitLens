@@ -21,12 +21,14 @@ async def run_agent(
             document_id=request.document_id,
             session_id=request.session_id,
             top_k=request.top_k,
+            mode=request.mode,
         ),
     )
     return AgentRunResponse(
         run_id=run.id,
         status=run.status,
         answer=run.output_text or "",
+        mode=request.mode,
         steps=[
             AgentStepResponse(
                 role=step.role,
