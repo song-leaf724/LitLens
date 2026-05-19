@@ -32,6 +32,12 @@ API docs:
 http://127.0.0.1:8000/docs
 ```
 
+Frontend workspace:
+
+```text
+http://127.0.0.1:8000/app
+```
+
 ## Configuration
 
 Core `.env` values:
