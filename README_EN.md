@@ -2,17 +2,18 @@
 
 [中文](README.md) | English
 
-LitLens is a FastAPI-based AI backend for close reading and evidence-based literary analysis. Users can upload texts or import public-domain works, then ask questions grounded in the original text with citations.
+LitLens is an AI application for evidence-based literary close reading. It provides a FastAPI backend, a static reading workspace, document upload and deletion, public-domain book import, PDF/EPUB parsing, genre-aware chunking, RAG question answering, and a LangGraph-based literary agent workflow.
 
 ## Features
 
 - FastAPI REST backend with auto-generated Swagger docs.
+- Static reading workspace at `/app` for upload, import, document management, RAG Q&A, agent analysis, citations, and steps.
 - OpenAI-compatible LLM and embedding APIs.
 - `.env` configuration for model, proxy, database, and RAG settings.
-- Upload and parse `.txt`, `.md`, `.pdf`, and `.epub` documents.
+- Upload, parse, and delete `.txt`, `.md`, `.pdf`, and `.epub` documents.
 - Import public texts from Project Gutenberg / Gutendex and Wikisource.
-- Genre-aware chunking for English fiction, modern Chinese prose, classical poetry, and classical prose.
-- Chroma vector store with SQLite metadata.
+- Genre-aware chunking for English fiction, modern Chinese prose, classical poetry, classical prose, and poetry-like texts.
+- Chroma vector store with SQLite metadata and JSON fallback retrieval.
 - RAG answers with citation metadata.
 - LangGraph-based evidence workflow with `fast` and `deep` modes.
 
@@ -139,7 +140,20 @@ Agent workflow
 pytest
 ```
 
-The test suite covers health checks, chunking, genre detection, book-source import, RAG flow, embedding batching, and the LangGraph agent workflow.
+The test suite covers health checks, parsing, chunking, genre detection, book-source import, RAG flow, embedding batching, frontend static serving, document deletion, and the LangGraph agent workflow.
+
+## Roadmap
+
+- Local library scanning and batch import for user-authorized directories.
+- OCR for scanned PDFs and image-based documents.
+- Claim-level evidence verification for final answers.
+- Context compression and long-term reading memory for long novels.
+- Character relationship graphs and event timelines.
+- User accounts, bookshelves, reading progress, and note management.
+- Background task queues for large parsing and embedding jobs.
+- Vector database upgrades such as Milvus, Qdrant, or PostgreSQL + pgvector.
+- Electron/Tauri desktop shell for richer local file access.
+- Production Docker Compose, logging, monitoring, and CI/CD.
 
 ## Notes
 

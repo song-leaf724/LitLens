@@ -1,24 +1,27 @@
-# 文学作品深度阅读助手 AI 后端 MVP
+# LitLens 文学作品深度阅读助手
 
 [English](README_EN.md) | 中文
 
-这是一个基于 FastAPI 的 AI 应用后端，用于对用户上传的文学作品或文学片段进行“基于原文”的深度阅读分析。MVP 支持文档上传、文本切分、向量检索、RAG 问答、文学分析接口、阅读笔记生成，以及一个基于 LangGraph 的证据型文学分析 Agent 工作流。
+LitLens 是一个面向文学作品深度阅读的 AI 应用。项目基于 FastAPI 构建后端，支持本地前端工作台、文档上传、公共书源导入、PDF/EPUB 解析、体裁感知切分、向量检索、RAG 问答，以及基于 LangGraph 的证据型文学分析 Agent 工作流。系统强调“基于原文回答”，尽量返回可核查的引用片段，避免脱离文本空谈。
 
 ## 已实现功能
 
 - FastAPI 服务启动与 `/health` 健康检查
+- 静态前端阅读工作台：上传、书源导入、文档管理、RAG 问答、Agent 分析、引用展示
 - `.env` 配置读取，不在代码里硬编码 API Key
 - OpenAI-compatible LLM 调用，支持 `base_url / api_key / model_name`
-- `/chat` 普通文学问答
-- `/chat/stream` SSE 流式输出
+- `/chat` 普通文学问答与 `/chat/stream` SSE 流式输出
 - `.txt` / `.md` / `.pdf` / `.epub` 文档上传与解析
-- 文档解析、chunking、embedding、向量入库
-- ChromaDB 向量库，Chroma 不可用时自动 fallback 到本地 JSON 向量检索
-- `/rag/query` 检索增强问答，返回引用片段
+- 文档删除：同步清理本地文件、SQLite 记录和向量库记录
+- Project Gutenberg / Wikisource 公共书源搜索与导入
+- 自动体裁识别：英文小说、现代中文、古典诗歌、文言散文、诗歌文本等
+- 体裁感知 chunking：现代文本按段落窗口，古诗按整首/句组，文言文按句群
+- Embedding 入库与 ChromaDB 向量检索，Chroma 不可用时 fallback 到本地 JSON 向量检索
+- `/rag/query` 检索增强问答，返回引用片段、文件名、位置和 chunk 元数据
 - 情节梳理、人物分析、主题意象分析、段落细读、双语赏析
 - 结构化阅读笔记生成
 - SQLite 保存会话、消息、文档、chunk、Agent 运行步骤
-- 基于 LangGraph 的证据型 Agent 工作流，支持快速模式和深度模式
+- 基于 LangGraph 的证据型 Agent 工作流，支持 `fast` 快速模式和 `deep` 深度模式
 
 ## 安装依赖
 
@@ -174,7 +177,7 @@ pytest
 
 ## 升级注意
 
-本次版本扩展了 `documents` 和 `chunks` 数据表字段。当前 MVP 还没有引入 Alembic 迁移系统，如果你本地已有旧版本测试数据，启动前建议清空旧数据库和向量库后重新上传或导入文本：
+当前项目还没有引入 Alembic 迁移系统。如果你本地已有旧版本测试数据，遇到表结构、向量维度或历史数据不兼容问题时，可以清空旧数据库和向量库后重新上传或导入文本：
 
 ```bash
 rm -rf data/app.db data/chroma data/uploads
@@ -189,14 +192,19 @@ app/
   api/
     router.py
     routes/
-  services/
-  schemas/
-  core/
-  rag/
   agent/
-  tools/
+  book_sources/
+  core/
   db/
   prompts/
+  rag/
+  schemas/
+  services/
+  tools/
+frontend/
+  index.html
+  styles.css
+  app.js
 tests/
 ```
 
@@ -242,10 +250,14 @@ curl -X POST http://127.0.0.1:8000/book-sources/import \
 
 ## 后续可扩展方向
 
-- 支持 PDF / EPUB 解析
-- 增加人物关系抽取与时间线抽取接口
-- 引入 LangGraph，实现 Reader / Critic / Translator / Verifier 多智能体协作
-- 增加回答 verifier，检查每个结论是否有原文证据
-- 增加前端阅读工作台，展示引用、笔记、人物与主题结构
-- 增加用户系统与多作品书架
+- 本地书库扫描与批量导入：扫描用户授权目录，筛选 `.txt/.md/.pdf/.epub` 后批量入库
+- OCR 支持：处理扫描版 PDF 或图片文本，可接入 PaddleOCR、Tesseract 或云 OCR
+- 更强的引用核查：对最终回答做 claim-level evidence checking，标记每个结论对应的原文依据
+- 上下文压缩与阅读记忆：对长篇作品生成章节摘要、人物记忆和主题记忆，降低长上下文成本
+- 人物关系图与时间线：抽取人物、事件、章节位置，形成可视化阅读地图
+- 多作品书架与用户系统：支持多用户、收藏、阅读进度、笔记管理
+- 后台任务队列：大文件解析、批量 embedding、书源导入可迁移到 Redis + Celery/RQ
+- 向量库升级：数据量变大后可评估 Milvus、Qdrant 或 PostgreSQL + pgvector
+- 桌面应用形态：用 Electron/Tauri 包装前端，实现更自然的本地文件扫描和离线书库管理
+- 部署工程化：补充生产环境 Docker Compose、日志轮转、监控和 CI/CD
 
